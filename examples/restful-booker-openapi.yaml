@@ -1,0 +1,435 @@
+openapi: 3.0.3
+info:
+  title: Restful Booker API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for the Restful Booker API playground.
+    The service provides authentication and CRUD operations for hotel bookings.
+    Data on the public environment may reset periodically.
+  contact:
+    name: Restful Booker
+    url: https://restful-booker.herokuapp.com/
+externalDocs:
+  description: Restful Booker API documentation
+  url: https://restful-booker.herokuapp.com/apidoc/index.html
+servers:
+  - url: https://restful-booker.herokuapp.com
+    description: Public Restful Booker server
+
+tags:
+  - name: Authentication
+    description: Generate an authentication token for protected operations.
+  - name: Booking
+    description: Create, retrieve, update, and delete hotel bookings.
+  - name: Health
+    description: Service health-check operation.
+
+paths:
+  /auth:
+    post:
+      tags: [Authentication]
+      summary: Create authentication token
+      operationId: createToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+            example:
+              username: admin
+              password: password123
+      responses:
+        '200':
+          description: Authentication result. A successful response contains a token.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AuthTokenResponse'
+                  - $ref: '#/components/schemas/AuthFailureResponse'
+              examples:
+                success:
+                  value:
+                    token: abc123
+                failure:
+                  value:
+                    reason: Bad credentials
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /booking:
+    get:
+      tags: [Booking]
+      summary: Get booking IDs
+      description: Returns booking identifiers, optionally filtered by guest name or booking dates.
+      operationId: getBookingIds
+      parameters:
+        - name: firstname
+          in: query
+          required: false
+          description: Filter by the guest's first name.
+          schema:
+            type: string
+          example: Jim
+        - name: lastname
+          in: query
+          required: false
+          description: Filter by the guest's last name.
+          schema:
+            type: string
+          example: Brown
+        - name: checkin
+          in: query
+          required: false
+          description: Filter by check-in date.
+          schema:
+            type: string
+            format: date
+          example: '2026-01-01'
+        - name: checkout
+          in: query
+          required: false
+          description: Filter by check-out date.
+          schema:
+            type: string
+            format: date
+          example: '2026-01-10'
+      responses:
+        '200':
+          description: A list of matching booking IDs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookingId'
+              example:
+                - bookingid: 1
+                - bookingid: 2
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Booking]
+      summary: Create a booking
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+            example:
+              firstname: Jim
+              lastname: Brown
+              totalprice: 111
+              depositpaid: true
+              bookingdates:
+                checkin: '2026-01-01'
+                checkout: '2026-01-10'
+              additionalneeds: Breakfast
+      responses:
+        '200':
+          description: Booking created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedBooking'
+              example:
+                bookingid: 1
+                booking:
+                  firstname: Jim
+                  lastname: Brown
+                  totalprice: 111
+                  depositpaid: true
+                  bookingdates:
+                    checkin: '2026-01-01'
+                    checkout: '2026-01-10'
+                  additionalneeds: Breakfast
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /booking/{bookingId}:
+    parameters:
+      - $ref: '#/components/parameters/BookingIdPath'
+    get:
+      tags: [Booking]
+      summary: Get a booking
+      operationId: getBooking
+      responses:
+        '200':
+          description: Booking details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Booking]
+      summary: Fully update a booking
+      description: Requires either a valid token cookie or HTTP Basic authentication.
+      operationId: updateBooking
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Booking'
+            example:
+              firstname: James
+              lastname: Brown
+              totalprice: 222
+              depositpaid: true
+              bookingdates:
+                checkin: '2026-02-01'
+                checkout: '2026-02-10'
+              additionalneeds: Breakfast
+      responses:
+        '200':
+          description: Booking updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Booking]
+      summary: Partially update a booking
+      description: Requires either a valid token cookie or HTTP Basic authentication.
+      operationId: partialUpdateBooking
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingPatch'
+            example:
+              firstname: James
+              lastname: Brown
+      responses:
+        '200':
+          description: Booking updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Booking]
+      summary: Delete a booking
+      description: Requires either a valid token cookie or HTTP Basic authentication.
+      operationId: deleteBooking
+      security:
+        - cookieAuth: []
+        - basicAuth: []
+      responses:
+        '201':
+          description: Booking deleted successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: Created
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ping:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        '201':
+          description: Service is available.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: Created
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+      description: "Token returned by POST /auth, sent as Cookie: token=<token>."
+    basicAuth:
+      type: http
+      scheme: basic
+      description: HTTP Basic authentication supported by protected booking operations.
+
+  parameters:
+    BookingIdPath:
+      name: bookingId
+      in: path
+      required: true
+      description: Numeric identifier of the booking.
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+  schemas:
+    AuthRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          format: password
+          example: password123
+
+    AuthTokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: Token used to authorize update and delete operations.
+          example: abc123
+
+    AuthFailureResponse:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          example: Bad credentials
+
+    BookingId:
+      type: object
+      required: [bookingid]
+      properties:
+        bookingid:
+          type: integer
+          example: 1
+
+    BookingDates:
+      type: object
+      required: [checkin, checkout]
+      properties:
+        checkin:
+          type: string
+          format: date
+          example: '2026-01-01'
+        checkout:
+          type: string
+          format: date
+          example: '2026-01-10'
+
+    Booking:
+      type: object
+      required:
+        - firstname
+        - lastname
+        - totalprice
+        - depositpaid
+        - bookingdates
+      properties:
+        firstname:
+          type: string
+          example: Jim
+        lastname:
+          type: string
+          example: Brown
+        totalprice:
+          type: integer
+          format: int32
+          minimum: 0
+          example: 111
+        depositpaid:
+          type: boolean
+          example: true
+        bookingdates:
+          $ref: '#/components/schemas/BookingDates'
+        additionalneeds:
+          type: string
+          nullable: true
+          example: Breakfast
+      xml:
+        name: booking
+
+    BookingPatch:
+      type: object
+      minProperties: 1
+      description: Any subset of booking fields may be supplied.
+      properties:
+        firstname:
+          type: string
+        lastname:
+          type: string
+        totalprice:
+          type: integer
+          format: int32
+          minimum: 0
+        depositpaid:
+          type: boolean
+        bookingdates:
+          $ref: '#/components/schemas/BookingDates'
+        additionalneeds:
+          type: string
+          nullable: true
+
+    CreatedBooking:
+      type: object
+      required: [bookingid, booking]
+      properties:
+        bookingid:
+          type: integer
+          example: 1
+        booking:
+          $ref: '#/components/schemas/Booking'
+
+    ErrorMessage:
+      type: object
+      additionalProperties: true
+      description: Error representation may vary because this is a testing playground.
+
+  responses:
+    BadRequest:
+      description: Invalid request or malformed input.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: Bad Request
+    Forbidden:
+      description: Authentication failed or was not provided.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: Forbidden
+    NotFound:
+      description: Booking not found.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: Not Found

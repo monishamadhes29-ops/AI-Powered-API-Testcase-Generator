@@ -1,0 +1,167 @@
+openapi: 3.0.3
+info:
+  title: Swagger API Testcase Generator Backend
+  version: 0.1.0
+servers:
+  - url: http://localhost:4000/api/v1
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200": { description: Backend is healthy }
+  /swagger/upload:
+    post:
+      summary: Upload and validate Swagger YAML or JSON
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201": { description: File uploaded and validation completed }
+        "400": { description: Invalid file }
+  /swagger/validate:
+    post:
+      summary: Revalidate the active Swagger document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionRequest"
+      responses:
+        "200": { description: Validation report }
+  /swagger/correct:
+    post:
+      summary: Correct the active Swagger document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId]
+              properties:
+                sessionId: { type: string, format: uuid }
+                applySafeCorrectionsOnly: { type: boolean, default: false }
+      responses:
+        "200": { description: Correction report }
+  /sessions/{sessionId}/confirm-test-generation:
+    post:
+      summary: Confirm testcase generation
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              properties:
+                confirmed: { type: boolean, enum: [true] }
+      responses:
+        "200": { description: Confirmation stored }
+  /testcases/generate:
+    post:
+      summary: Generate API testcases
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, categories]
+              properties:
+                sessionId: { type: string, format: uuid }
+                categories:
+                  type: array
+                  items:
+                    type: string
+                    enum: [positive, negative, boundary, authentication, authorization, validation, error-handling]
+      responses:
+        "200": { description: Generated testcases }
+  /postman/generate:
+    post:
+      summary: Generate Postman collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId]
+              properties:
+                sessionId: { type: string, format: uuid }
+                includeBasicTests: { type: boolean, default: true }
+      responses:
+        "200": { description: Postman collection generated }
+  /sessions/{sessionId}/summary:
+    get:
+      summary: Get processing summary
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200": { description: Session summary }
+  /sessions/{sessionId}/testcases:
+    get:
+      summary: Get generated testcases
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200": { description: Generated testcases }
+  /sessions/{sessionId}/export/json:
+    get:
+      summary: Download testcases as JSON
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200": { description: JSON export }
+  /sessions/{sessionId}/export/excel:
+    get:
+      summary: Download testcases as Excel
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200": { description: Excel export }
+  /sessions/{sessionId}/export/swagger:
+    get:
+      summary: Download active corrected Swagger
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200": { description: Swagger export }
+  /sessions/{sessionId}/export/postman:
+    get:
+      summary: Download Postman collection
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200": { description: Postman collection export }
+  /sessions/{sessionId}:
+    delete:
+      summary: Clear processing session
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "200": { description: Session cleared }
+components:
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    SessionRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId: { type: string, format: uuid }
